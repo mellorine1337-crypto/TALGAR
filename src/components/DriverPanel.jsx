@@ -3,15 +3,28 @@ import TaskCard from "./TaskCard";
 import { sortDriverTasks } from "../utils/taskHelpers";
 
 const LOCATION_PUSH_INTERVAL_MS = 10_000;
-const GEOLOCATION_OPTIONS = {
+const QUICK_GEOLOCATION_OPTIONS = {
+  enableHighAccuracy: false,
+  maximumAge: 60_000,
+  timeout: 4_000,
+};
+const LIVE_GEOLOCATION_OPTIONS = {
   enableHighAccuracy: true,
-  maximumAge: 5_000,
-  timeout: 15_000,
+  maximumAge: 10_000,
+  timeout: 8_000,
 };
 
 function getTrackingLabel(state) {
   if (state === "live") {
     return "Геолокация активна";
+  }
+
+  if (state === "warming") {
+    return "Уточняю GPS";
+  }
+
+  if (state === "cached") {
+    return "Показываю последнюю точку";
   }
 
   if (state === "requesting") {
@@ -43,7 +56,7 @@ function getTrackingMessage(error) {
   }
 
   if (error?.code === 3) {
-    return "Слишком долго жду координаты. Попробуй выйти на открытое место.";
+    return "GPS ищется слишком долго. Пока показываю последнюю точку, попробуй выйти на открытое место.";
   }
 
   return error?.message || "Не удалось обновить геопозицию машины.";
@@ -55,6 +68,20 @@ function formatLocation(value) {
   }
 
   return `${value.lat.toFixed(5)}, ${value.lon.toFixed(5)}`;
+}
+
+function toPositionPayload(value) {
+  if (!value) {
+    return null;
+  }
+
+  return {
+    lat: value.lat,
+    lon: value.lon,
+    accuracy: value.accuracy,
+    heading: value.heading,
+    speed: value.speed,
+  };
 }
 
 export default function DriverPanel({
@@ -70,6 +97,7 @@ export default function DriverPanel({
   const [trackingState, setTrackingState] = useState("idle");
   const [trackingError, setTrackingError] = useState("");
   const [currentPosition, setCurrentPosition] = useState(null);
+  const currentPositionRef = useRef(null);
   const lastPushAtRef = useRef(0);
   const hasGeolocation =
     typeof navigator !== "undefined" && "geolocation" in navigator;
@@ -78,14 +106,27 @@ export default function DriverPanel({
     () => fleet.find((item) => item.name === activeDriver) || null,
     [activeDriver, fleet]
   );
+  const serverPosition = useMemo(
+    () => toPositionPayload(activeFleet?.lastLocation),
+    [activeFleet]
+  );
   const driverTasks = sortDriverTasks(
     tasks.filter((task) => task.assignedDriver === activeDriver)
   );
+  const displayedPosition = currentPosition || serverPosition;
   const effectiveTrackingState = !hasGeolocation
     ? "unsupported"
-    : activeDriver && trackingState === "idle"
-      ? "requesting"
-      : trackingState;
+    : trackingState === "denied"
+      ? "denied"
+      : trackingState === "error" && !displayedPosition
+        ? "error"
+        : currentPosition
+          ? "live"
+          : activeDriver && displayedPosition
+            ? "warming"
+            : activeDriver
+              ? "requesting"
+              : "idle";
   const pendingCount = driverTasks.filter((task) => task.status === "pending").length;
   const inProgressCount = driverTasks.filter(
     (task) => task.status === "in_progress"
@@ -101,14 +142,59 @@ export default function DriverPanel({
     }
   });
 
+  const applyPosition = useEffectEvent((payload, nextState = "live") => {
+    currentPositionRef.current = payload;
+    setCurrentPosition(payload);
+    setTrackingState(nextState);
+  });
+
+  const pushLocationIfDue = useEffectEvent((payload) => {
+    if (Date.now() - lastPushAtRef.current < LOCATION_PUSH_INTERVAL_MS) {
+      return;
+    }
+
+    lastPushAtRef.current = Date.now();
+    reportLocation(payload);
+  });
+
   useEffect(() => {
     lastPushAtRef.current = 0;
+    currentPositionRef.current = null;
   }, [activeDriver]);
 
   useEffect(() => {
     if (!activeDriver || !hasGeolocation) {
       return undefined;
     }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const payload = {
+          lat: position.coords.latitude,
+          lon: position.coords.longitude,
+          accuracy: position.coords.accuracy,
+          heading:
+            position.coords.heading === null ? null : Number(position.coords.heading),
+          speed: position.coords.speed === null ? null : Number(position.coords.speed),
+        };
+
+        applyPosition(payload);
+        pushLocationIfDue(payload);
+      },
+      (error) => {
+        if (error?.code === 1) {
+          setTrackingState("denied");
+          setTrackingError(getTrackingMessage(error));
+          return;
+        }
+
+        if (!(currentPositionRef.current || serverPosition)) {
+          setTrackingState("error");
+          setTrackingError(getTrackingMessage(error));
+        }
+      },
+      QUICK_GEOLOCATION_OPTIONS
+    );
 
     const watchId = navigator.geolocation.watchPosition(
       (position) => {
@@ -121,27 +207,29 @@ export default function DriverPanel({
           speed: position.coords.speed === null ? null : Number(position.coords.speed),
         };
 
-        setCurrentPosition(payload);
-        setTrackingState("live");
-
-        if (Date.now() - lastPushAtRef.current < LOCATION_PUSH_INTERVAL_MS) {
+        applyPosition(payload);
+        pushLocationIfDue(payload);
+      },
+      (error) => {
+        if (error?.code === 1) {
+          setTrackingState("denied");
+          setTrackingError(getTrackingMessage(error));
           return;
         }
 
-        lastPushAtRef.current = Date.now();
-        reportLocation(payload);
-      },
-      (error) => {
-        setTrackingState(error?.code === 1 ? "denied" : "error");
+        if (!(currentPositionRef.current || serverPosition)) {
+          setTrackingState("error");
+        }
+
         setTrackingError(getTrackingMessage(error));
       },
-      GEOLOCATION_OPTIONS
+      LIVE_GEOLOCATION_OPTIONS
     );
 
     return () => {
       navigator.geolocation.clearWatch(watchId);
     };
-  }, [activeDriver, hasGeolocation]);
+  }, [activeDriver, hasGeolocation, serverPosition]);
 
   return (
     <section className="panel">
@@ -185,7 +273,9 @@ export default function DriverPanel({
       <div className="driver-status-bar">
         <span
           className={`fleet-status ${
-            effectiveTrackingState === "live" ? "live" : "offline"
+            ["live", "warming", "cached"].includes(effectiveTrackingState)
+              ? "live"
+              : "offline"
           }`}
         >
           {getTrackingLabel(effectiveTrackingState)}
@@ -193,7 +283,7 @@ export default function DriverPanel({
         <span className="metric-badge">
           Госномер: {activeFleet?.plateNumber || "не указан"}
         </span>
-        <span className="metric-badge">GPS: {formatLocation(currentPosition)}</span>
+        <span className="metric-badge">GPS: {formatLocation(displayedPosition)}</span>
       </div>
 
       {trackingError ? <div className="message-banner warning">{trackingError}</div> : null}
