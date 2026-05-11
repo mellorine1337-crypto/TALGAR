@@ -2,14 +2,14 @@ import { mkdir, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { hashPassword, normalizePlateNumber } from "./auth.js";
-import { query, withTransaction } from "./db.js";
+import { ensureDatabaseSchema, query, withTransaction } from "./db.js";
 import { archivePhoto } from "./photoArchive.js";
 import { buildNewTask, normalizeTask } from "../src/utils/taskHelpers.js";
 
 let writeQueue = Promise.resolve();
 let runtimeSchemaReady = false;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const UPLOADS_DIR = path.join(__dirname, "uploads");
+const UPLOADS_DIR = String(process.env.UPLOADS_DIR || "").trim() || path.join(__dirname, "uploads");
 const PUBLIC_UPLOADS_PREFIX = "/api/uploads";
 const ONLINE_THRESHOLD_MS = 90 * 1000;
 const MAX_BETA_DRIVERS = 4;
@@ -223,6 +223,8 @@ async function ensureRuntimeSchema(client) {
   if (runtimeSchemaReady) {
     return;
   }
+
+  await ensureDatabaseSchema(client);
 
   await client.query(
     `ALTER TABLE drivers

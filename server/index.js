@@ -1,6 +1,7 @@
 import "dotenv/config";
 import cors from "cors";
 import express from "express";
+import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -26,12 +27,16 @@ import {
   updateDriverLocation,
   updateTask,
 } from "./store.js";
+import { ensureDatabaseSchema } from "./db.js";
 import { startTelegramBot } from "./telegramBot.js";
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3001;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const UPLOADS_DIR = path.join(__dirname, "uploads");
+const PROJECT_ROOT = path.resolve(__dirname, "..");
+const DIST_DIR = path.join(PROJECT_ROOT, "dist");
+const UPLOADS_DIR = String(process.env.UPLOADS_DIR || "").trim() || path.join(__dirname, "uploads");
+const HAS_DIST = existsSync(DIST_DIR);
 const EMPTY_BOT_STATE = {
   configured: false,
   running: false,
@@ -344,6 +349,18 @@ const bot = startTelegramBot({
   },
 });
 
+app.get("/healthz", async (request, response, next) => {
+  try {
+    await ensureDatabaseSchema();
+    response.json({
+      ok: true,
+      bot: bot.getStatus(),
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.post("/api/auth/login", async (request, response, next) => {
   try {
     const login = String(request.body?.login || "").trim();
@@ -501,6 +518,19 @@ app.delete("/api/tasks/:taskId", requireDispatcher, async (request, response, ne
   }
 });
 
+if (HAS_DIST) {
+  app.use(express.static(DIST_DIR));
+
+  app.use((request, response, next) => {
+    if (request.path.startsWith("/api/")) {
+      next();
+      return;
+    }
+
+    response.sendFile(path.join(DIST_DIR, "index.html"));
+  });
+}
+
 app.use((error, request, response, next) => {
   if (response.headersSent) {
     next(error);
@@ -518,8 +548,10 @@ app.use((error, request, response, next) => {
   response.status(statusCode).json({ message });
 });
 
-const server = app.listen(PORT, () => {
-  console.log(`API server is running on http://localhost:${PORT}`);
+await ensureDatabaseSchema();
+
+const server = app.listen(PORT, "0.0.0.0", () => {
+  console.log(`API server is running on http://0.0.0.0:${PORT}`);
 });
 
 function shutdown() {

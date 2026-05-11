@@ -106,6 +106,57 @@ npm install
 npm run dev
 ```
 
+## Деплой на месяц
+
+Для этой беты самый прагматичный вариант: один Render web service + один Render Postgres.
+
+Почему так:
+
+- один публичный URL для диспетчера и водителей
+- один процесс для React, API и Telegram-бота
+- управляемая PostgreSQL без ручного администрирования
+- можно прикрутить persistent disk под локальные фото и параллельно архивировать их в Яндекс Диск
+
+В репозиторий уже добавлен [render.yaml](/Users/alpa/Downloads/Talgarclean-main/render.yaml).
+
+### Что нужно в Render
+
+При создании Blueprint Render попросит секреты:
+
+- `DISPATCHER_PASSWORD`
+- `TELEGRAM_BOT_TOKEN`
+- `VITE_MAPBOX_TOKEN`
+- `YANDEX_DISK_TOKEN`
+
+Что создастся автоматически:
+
+- web service `talgarclean-web`
+- Postgres `talgarclean-db`
+- persistent disk для `uploads`
+
+### Как деплоить
+
+1. Запушь актуальный код в GitHub.
+2. В Render выбери `New > Blueprint`.
+3. Подключи репозиторий `TALGAR`.
+4. Подтверди значения из `render.yaml`.
+5. Введи секреты при первом запуске.
+6. Дождись первого deploy.
+
+### Что уже учтено для продакшна
+
+- сервер сам раздаёт собранный фронт из `dist`
+- есть health check `GET /healthz`
+- схема базы поднимается автоматически при старте
+- сервис слушает `PORT`, который выдаёт Render
+- локальные фото можно хранить на persistent disk через `UPLOADS_DIR=/var/data/uploads`
+
+### Что важно для этой беты
+
+- Не используй free web service: по официальной документации Render уводит free service в sleep после 15 минут без входящего трафика.
+- Без persistent disk локальные фото будут теряться при redeploy или рестарте.
+- Даже с диском Яндекс Диск всё равно полезен как внешний архив.
+
 ## Структура
 
 - `src/` - React интерфейс.

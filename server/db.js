@@ -1,8 +1,14 @@
 import pg from "pg";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 const { Pool } = pg;
 
 let pool = null;
+let schemaReadyPromise = null;
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const SCHEMA_PATH = path.join(__dirname, "db", "schema.sql");
 
 function createPool() {
   const connectionString = process.env.DATABASE_URL;
@@ -32,6 +38,21 @@ export function getPool() {
 
 export async function query(text, values) {
   return getPool().query(text, values);
+}
+
+export async function ensureDatabaseSchema(client = null) {
+  if (!schemaReadyPromise) {
+    schemaReadyPromise = (async () => {
+      const schemaSql = await readFile(SCHEMA_PATH, "utf8");
+      const executor = client || getPool();
+      await executor.query(schemaSql);
+    })().catch((error) => {
+      schemaReadyPromise = null;
+      throw error;
+    });
+  }
+
+  return schemaReadyPromise;
 }
 
 export async function withTransaction(work) {
