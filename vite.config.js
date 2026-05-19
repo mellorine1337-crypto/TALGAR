@@ -9,8 +9,7 @@ export default defineConfig({
   plugins: [
     react(),
     legacy({
-      targets: ['chrome >= 60', 'android >= 6'],
-      modernPolyfills: true,
+      targets: ['chrome >= 43', 'android >= 4'],
     }),
   ],
   server: {

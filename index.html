@@ -10,20 +10,6 @@
   </head>
   <body>
     <div id="root"></div>
-    <script>
-      window.onerror = function(msg, src, line, col, err) {
-        var el = document.getElementById('root');
-        el.style.cssText = 'padding:24px;font-family:sans-serif;color:#fff;background:#7f1d1d';
-        el.innerHTML = '<h2>Ошибка JS</h2><p>' + msg + '</p><small>' + src + ' :' + line + '</small><br><button onclick="location.reload()" style="margin-top:16px;padding:10px 24px;border:none;border-radius:8px;background:#fff;color:#111;font-size:16px;cursor:pointer">Перезагрузить</button>';
-      };
-      window.addEventListener('unhandledrejection', function(e) {
-        var el = document.getElementById('root');
-        if (el && el.children.length === 0) {
-          el.style.cssText = 'padding:24px;font-family:sans-serif;color:#fff;background:#7f1d1d';
-          el.innerHTML = '<h2>Ошибка Promise</h2><p>' + e.reason + '</p><button onclick="location.reload()" style="margin-top:16px;padding:10px 24px;border:none;border-radius:8px;background:#fff;color:#111;font-size:16px;cursor:pointer">Перезагрузить</button>';
-        }
-      });
-    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
