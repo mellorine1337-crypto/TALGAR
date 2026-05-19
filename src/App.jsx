@@ -7,10 +7,10 @@ import {
   persistAuthToken,
 } from "./api/client";
 import DriverPanel from "./components/DriverPanel";
-
-const DispatcherPanel = lazy(() => import("./components/DispatcherPanel"));
 import LoginScreen from "./components/LoginScreen";
 import { formatDate } from "./utils/taskHelpers";
+
+const DispatcherPanel = lazy(() => import("./components/DispatcherPanel"));
 
 const POLL_INTERVAL_MS = 4000;
 const EMPTY_BOT_STATE = {
