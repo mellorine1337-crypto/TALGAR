@@ -40,10 +40,13 @@ function compressImage(file) {
 
 export default function TaskCard({ task, driverLabel, onReset, onUpdate }) {
   const [uploading, setUploading] = useState({ before: false, after: false });
+  const [localPhotos, setLocalPhotos] = useState({ before: null, after: null });
   const beforeInputRef = useRef(null);
   const afterInputRef = useRef(null);
   const isUploading = uploading.before || uploading.after;
   const isCompleted = task.status === "completed";
+  const displayBeforePhoto = task.beforePhoto || localPhotos.before;
+  const displayAfterPhoto = task.afterPhoto || localPhotos.after;
   const canFinishTask =
     !isCompleted && !isUploading && Boolean(task.startedAt && task.beforePhoto && task.afterPhoto);
   const startButtonLabel =
@@ -68,32 +71,34 @@ export default function TaskCard({ task, driverLabel, onReset, onUpdate }) {
   const handleBefore = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
+    event.target.value = "";
 
     setUploading((prev) => ({ ...prev, before: true }));
     try {
       const dataUrl = await compressImage(file);
+      setLocalPhotos((prev) => ({ ...prev, before: dataUrl }));
       await onUpdate(task.id, { beforePhoto: dataUrl });
     } catch {
       // error banner shown by App.jsx
     } finally {
       setUploading((prev) => ({ ...prev, before: false }));
-      event.target.value = "";
     }
   };
 
   const handleAfter = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
+    event.target.value = "";
 
     setUploading((prev) => ({ ...prev, after: true }));
     try {
       const dataUrl = await compressImage(file);
+      setLocalPhotos((prev) => ({ ...prev, after: dataUrl }));
       await onUpdate(task.id, { afterPhoto: dataUrl });
     } catch {
       // error banner shown by App.jsx
     } finally {
       setUploading((prev) => ({ ...prev, after: false }));
-      event.target.value = "";
     }
   };
 
@@ -165,19 +170,19 @@ export default function TaskCard({ task, driverLabel, onReset, onUpdate }) {
       <div className="photo-grid">
         <div className="photo-box">
           <h4 className="photo-box-title">Фото до</h4>
-          {task.beforePhoto ? (
-            <img className="photo-preview" src={task.beforePhoto} alt="Фото до" />
+          {displayBeforePhoto ? (
+            <img className="photo-preview" src={displayBeforePhoto} alt="Фото до" />
           ) : (
             <div className="photo-placeholder">Фото не сделано</div>
           )}
           {!isCompleted && (
             <button
               type="button"
-              className={`photo-btn${uploading.before ? " loading" : task.beforePhoto ? " retake" : ""}`}
+              className={`photo-btn${uploading.before ? " loading" : displayBeforePhoto ? " retake" : ""}`}
               onClick={() => beforeInputRef.current?.click()}
               disabled={uploading.before}
             >
-              {uploading.before ? "Отправка…" : task.beforePhoto ? "Переснять" : "Сфотографировать"}
+              {uploading.before ? "Отправка…" : displayBeforePhoto ? "Переснять" : "Сфотографировать"}
             </button>
           )}
           <input
@@ -192,19 +197,19 @@ export default function TaskCard({ task, driverLabel, onReset, onUpdate }) {
 
         <div className="photo-box">
           <h4 className="photo-box-title">Фото после</h4>
-          {task.afterPhoto ? (
-            <img className="photo-preview" src={task.afterPhoto} alt="Фото после" />
+          {displayAfterPhoto ? (
+            <img className="photo-preview" src={displayAfterPhoto} alt="Фото после" />
           ) : (
             <div className="photo-placeholder">Фото не сделано</div>
           )}
           {!isCompleted && (
             <button
               type="button"
-              className={`photo-btn${uploading.after ? " loading" : task.afterPhoto ? " retake" : ""}`}
+              className={`photo-btn${uploading.after ? " loading" : displayAfterPhoto ? " retake" : ""}`}
               onClick={() => afterInputRef.current?.click()}
               disabled={uploading.after}
             >
-              {uploading.after ? "Отправка…" : task.afterPhoto ? "Переснять" : "Сфотографировать"}
+              {uploading.after ? "Отправка…" : displayAfterPhoto ? "Переснять" : "Сфотографировать"}
             </button>
           )}
           <input
