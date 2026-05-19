@@ -146,8 +146,7 @@ async function storePhoto(task, fieldName, value, previousValue = null) {
       buffer,
     });
   } catch (error) {
-    await deleteStoredPhoto(publicPath);
-    throw error;
+    console.error("[photoArchive] Yandex Disk upload failed (photo saved locally):", error.message);
   }
 
   await deleteStoredPhoto(previousValue);
