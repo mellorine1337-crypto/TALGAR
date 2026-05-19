@@ -33,6 +33,9 @@ export function clearStoredAuthToken() {
 }
 
 async function request(path, options = {}, token = "") {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 12000);
+
   const headers = {
     "Content-Type": "application/json",
     ...(options.headers || {}),
@@ -42,10 +45,22 @@ async function request(path, options = {}, token = "") {
     headers.Authorization = `Bearer ${token}`;
   }
 
-  const response = await fetch(path, {
-    ...options,
-    headers,
-  });
+  let response;
+  try {
+    response = await fetch(path, {
+      ...options,
+      headers,
+      signal: controller.signal,
+    });
+  } catch (err) {
+    clearTimeout(timeoutId);
+    if (err.name === "AbortError") {
+      throw new Error("Сервер не отвечает. Подожди немного и попробуй снова.");
+    }
+    throw err;
+  }
+
+  clearTimeout(timeoutId);
 
   if (!response.ok) {
     let message = "Request failed.";
