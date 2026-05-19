@@ -977,10 +977,65 @@
   font-size: 1.1rem;
 }
 
+.photo-box-title {
+  margin: 0 0 12px;
+  color: #f8fafc;
+  font-size: 1.1rem;
+}
+
 .file-input {
   width: 100%;
   margin-bottom: 12px;
   color: #b8c5d9;
+}
+
+.photo-placeholder {
+  min-height: 180px;
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  background: rgba(30, 41, 59, 0.82);
+  border: 1px dashed rgba(148, 163, 184, 0.18);
+  color: #94a3b8;
+  margin-bottom: 10px;
+}
+
+.photo-preview {
+  margin-bottom: 10px;
+}
+
+.photo-btn {
+  display: block;
+  width: 100%;
+  padding: 14px;
+  border-radius: 14px;
+  text-align: center;
+  font-weight: 700;
+  font-size: 1rem;
+  cursor: pointer;
+  background: rgba(59, 130, 246, 0.18);
+  color: #93c5fd;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  transition: background 0.15s;
+}
+
+.photo-btn:hover {
+  background: rgba(59, 130, 246, 0.28);
+}
+
+.photo-btn.retake {
+  background: rgba(71, 85, 105, 0.22);
+  color: #94a3b8;
+  border-color: rgba(148, 163, 184, 0.2);
+}
+
+.photo-btn.loading {
+  background: rgba(234, 179, 8, 0.12);
+  color: #fde047;
+  border-color: rgba(234, 179, 8, 0.25);
+  cursor: not-allowed;
 }
 
 .photo-empty {

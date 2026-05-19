@@ -162,54 +162,46 @@ export default function TaskCard({ task, driverLabel, onReset, onUpdate }) {
 
       <div className="photo-grid">
         <div className="photo-box">
-          <div className="photo-box-head">
-            <h4>Фото до</h4>
-            {uploading.before ? (
-              <span className="photo-flag uploading">Загрузка…</span>
-            ) : task.beforePhoto ? (
-              <span className="photo-flag ready">Готово</span>
-            ) : null}
-          </div>
-          <input
-            className="file-input"
-            type="file"
-            accept="image/*"
-            capture="environment"
-            onChange={handleBefore}
-            disabled={isCompleted || uploading.before}
-          />
-          {uploading.before ? (
-            <div className="photo-empty">Отправка фото…</div>
-          ) : task.beforePhoto ? (
+          <h4 className="photo-box-title">Фото до</h4>
+          {task.beforePhoto ? (
             <img className="photo-preview" src={task.beforePhoto} alt="Фото до" />
           ) : (
-            <div className="photo-empty">Фото не загружено</div>
+            <div className="photo-placeholder">Фото не сделано</div>
+          )}
+          {!isCompleted && (
+            <label className={`photo-btn${uploading.before ? " loading" : task.beforePhoto ? " retake" : ""}`}>
+              {uploading.before ? "Отправка…" : task.beforePhoto ? "Переснять" : "Сфотографировать"}
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={handleBefore}
+                disabled={uploading.before}
+                style={{ display: "none" }}
+              />
+            </label>
           )}
         </div>
 
         <div className="photo-box">
-          <div className="photo-box-head">
-            <h4>Фото после</h4>
-            {uploading.after ? (
-              <span className="photo-flag uploading">Загрузка…</span>
-            ) : task.afterPhoto ? (
-              <span className="photo-flag ready">Готово</span>
-            ) : null}
-          </div>
-          <input
-            className="file-input"
-            type="file"
-            accept="image/*"
-            capture="environment"
-            onChange={handleAfter}
-            disabled={isCompleted || uploading.after}
-          />
-          {uploading.after ? (
-            <div className="photo-empty">Отправка фото…</div>
-          ) : task.afterPhoto ? (
+          <h4 className="photo-box-title">Фото после</h4>
+          {task.afterPhoto ? (
             <img className="photo-preview" src={task.afterPhoto} alt="Фото после" />
           ) : (
-            <div className="photo-empty">Фото не загружено</div>
+            <div className="photo-placeholder">Фото не сделано</div>
+          )}
+          {!isCompleted && (
+            <label className={`photo-btn${uploading.after ? " loading" : task.afterPhoto ? " retake" : ""}`}>
+              {uploading.after ? "Отправка…" : task.afterPhoto ? "Переснять" : "Сфотографировать"}
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={handleAfter}
+                disabled={uploading.after}
+                style={{ display: "none" }}
+              />
+            </label>
           )}
         </div>
       </div>
