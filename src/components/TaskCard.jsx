@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   formatDate,
   getStatusText,
@@ -40,6 +40,8 @@ function compressImage(file) {
 
 export default function TaskCard({ task, driverLabel, onReset, onUpdate }) {
   const [uploading, setUploading] = useState({ before: false, after: false });
+  const beforeInputRef = useRef(null);
+  const afterInputRef = useRef(null);
   const isUploading = uploading.before || uploading.after;
   const isCompleted = task.status === "completed";
   const canFinishTask =
@@ -169,18 +171,23 @@ export default function TaskCard({ task, driverLabel, onReset, onUpdate }) {
             <div className="photo-placeholder">Фото не сделано</div>
           )}
           {!isCompleted && (
-            <label className={`photo-btn${uploading.before ? " loading" : task.beforePhoto ? " retake" : ""}`}>
+            <button
+              type="button"
+              className={`photo-btn${uploading.before ? " loading" : task.beforePhoto ? " retake" : ""}`}
+              onClick={() => beforeInputRef.current?.click()}
+              disabled={uploading.before}
+            >
               {uploading.before ? "Отправка…" : task.beforePhoto ? "Переснять" : "Сфотографировать"}
-              <input
-                type="file"
-                accept="image/*"
-                capture="environment"
-                onChange={handleBefore}
-                disabled={uploading.before}
-                style={{ display: "none" }}
-              />
-            </label>
+            </button>
           )}
+          <input
+            ref={beforeInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={handleBefore}
+            style={{ position: "absolute", opacity: 0, pointerEvents: "none" }}
+          />
         </div>
 
         <div className="photo-box">
@@ -191,18 +198,23 @@ export default function TaskCard({ task, driverLabel, onReset, onUpdate }) {
             <div className="photo-placeholder">Фото не сделано</div>
           )}
           {!isCompleted && (
-            <label className={`photo-btn${uploading.after ? " loading" : task.afterPhoto ? " retake" : ""}`}>
+            <button
+              type="button"
+              className={`photo-btn${uploading.after ? " loading" : task.afterPhoto ? " retake" : ""}`}
+              onClick={() => afterInputRef.current?.click()}
+              disabled={uploading.after}
+            >
               {uploading.after ? "Отправка…" : task.afterPhoto ? "Переснять" : "Сфотографировать"}
-              <input
-                type="file"
-                accept="image/*"
-                capture="environment"
-                onChange={handleAfter}
-                disabled={uploading.after}
-                style={{ display: "none" }}
-              />
-            </label>
+            </button>
           )}
+          <input
+            ref={afterInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={handleAfter}
+            style={{ position: "absolute", opacity: 0, pointerEvents: "none" }}
+          />
         </div>
       </div>
 
