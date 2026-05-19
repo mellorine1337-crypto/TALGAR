@@ -5,13 +5,13 @@ import { sortDriverTasks } from "../utils/taskHelpers";
 const LOCATION_PUSH_INTERVAL_MS = 10_000;
 const QUICK_GEOLOCATION_OPTIONS = {
   enableHighAccuracy: false,
-  maximumAge: 60_000,
-  timeout: 4_000,
+  maximumAge: 120_000,
+  timeout: 20_000,
 };
 const LIVE_GEOLOCATION_OPTIONS = {
-  enableHighAccuracy: true,
-  maximumAge: 10_000,
-  timeout: 8_000,
+  enableHighAccuracy: false,
+  maximumAge: 30_000,
+  timeout: 20_000,
 };
 
 function getTrackingLabel(state) {
@@ -56,7 +56,7 @@ function getTrackingMessage(error) {
   }
 
   if (error?.code === 3) {
-    return "GPS ищется слишком долго. Пока показываю последнюю точку, попробуй выйти на открытое место.";
+    return "Не удалось получить местоположение. Убедись что геолокация разрешена в настройках браузера и включён Wi-Fi или мобильный интернет.";
   }
 
   return error?.message || "Не удалось обновить геопозицию машины.";
