@@ -1,13 +1,49 @@
+import { useState } from "react";
 import {
   formatDate,
   getStatusText,
   getSourceText,
 } from "../utils/taskHelpers";
 
+const MAX_PHOTO_WIDTH = 1280;
+const JPEG_QUALITY = 0.82;
+
+function compressImage(file) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      const canvas = document.createElement("canvas");
+      let { width, height } = img;
+
+      if (width > MAX_PHOTO_WIDTH) {
+        height = Math.round((height * MAX_PHOTO_WIDTH) / width);
+        width = MAX_PHOTO_WIDTH;
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+      canvas.getContext("2d").drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL("image/jpeg", JPEG_QUALITY));
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error("Не удалось прочитать изображение"));
+    };
+
+    img.src = objectUrl;
+  });
+}
+
 export default function TaskCard({ task, driverLabel, onReset, onUpdate }) {
+  const [uploading, setUploading] = useState({ before: false, after: false });
+  const isUploading = uploading.before || uploading.after;
   const isCompleted = task.status === "completed";
   const canFinishTask =
-    !isCompleted && Boolean(task.startedAt && task.beforePhoto && task.afterPhoto);
+    !isCompleted && !isUploading && Boolean(task.startedAt && task.beforePhoto && task.afterPhoto);
   const startButtonLabel =
     task.status === "pending"
       ? "Начать работу"
@@ -27,26 +63,36 @@ export default function TaskCard({ task, driverLabel, onReset, onUpdate }) {
     });
   };
 
-  const handleBefore = (event) => {
+  const handleBefore = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      onUpdate(task.id, { beforePhoto: reader.result });
-    };
-    reader.readAsDataURL(file);
+    setUploading((prev) => ({ ...prev, before: true }));
+    try {
+      const dataUrl = await compressImage(file);
+      await onUpdate(task.id, { beforePhoto: dataUrl });
+    } catch {
+      // error banner shown by App.jsx
+    } finally {
+      setUploading((prev) => ({ ...prev, before: false }));
+      event.target.value = "";
+    }
   };
 
-  const handleAfter = (event) => {
+  const handleAfter = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      onUpdate(task.id, { afterPhoto: reader.result });
-    };
-    reader.readAsDataURL(file);
+    setUploading((prev) => ({ ...prev, after: true }));
+    try {
+      const dataUrl = await compressImage(file);
+      await onUpdate(task.id, { afterPhoto: dataUrl });
+    } catch {
+      // error banner shown by App.jsx
+    } finally {
+      setUploading((prev) => ({ ...prev, after: false }));
+      event.target.value = "";
+    }
   };
 
   const handleFinish = () => {
@@ -118,7 +164,11 @@ export default function TaskCard({ task, driverLabel, onReset, onUpdate }) {
         <div className="photo-box">
           <div className="photo-box-head">
             <h4>Фото до</h4>
-            {task.beforePhoto ? <span className="photo-flag ready">Готово</span> : null}
+            {uploading.before ? (
+              <span className="photo-flag uploading">Загрузка…</span>
+            ) : task.beforePhoto ? (
+              <span className="photo-flag ready">Готово</span>
+            ) : null}
           </div>
           <input
             className="file-input"
@@ -126,9 +176,11 @@ export default function TaskCard({ task, driverLabel, onReset, onUpdate }) {
             accept="image/*"
             capture="environment"
             onChange={handleBefore}
-            disabled={isCompleted}
+            disabled={isCompleted || uploading.before}
           />
-          {task.beforePhoto ? (
+          {uploading.before ? (
+            <div className="photo-empty">Отправка фото…</div>
+          ) : task.beforePhoto ? (
             <img className="photo-preview" src={task.beforePhoto} alt="Фото до" />
           ) : (
             <div className="photo-empty">Фото не загружено</div>
@@ -138,7 +190,11 @@ export default function TaskCard({ task, driverLabel, onReset, onUpdate }) {
         <div className="photo-box">
           <div className="photo-box-head">
             <h4>Фото после</h4>
-            {task.afterPhoto ? <span className="photo-flag ready">Готово</span> : null}
+            {uploading.after ? (
+              <span className="photo-flag uploading">Загрузка…</span>
+            ) : task.afterPhoto ? (
+              <span className="photo-flag ready">Готово</span>
+            ) : null}
           </div>
           <input
             className="file-input"
@@ -146,9 +202,11 @@ export default function TaskCard({ task, driverLabel, onReset, onUpdate }) {
             accept="image/*"
             capture="environment"
             onChange={handleAfter}
-            disabled={isCompleted}
+            disabled={isCompleted || uploading.after}
           />
-          {task.afterPhoto ? (
+          {uploading.after ? (
+            <div className="photo-empty">Отправка фото…</div>
+          ) : task.afterPhoto ? (
             <img className="photo-preview" src={task.afterPhoto} alt="Фото после" />
           ) : (
             <div className="photo-empty">Фото не загружено</div>
@@ -163,7 +221,7 @@ export default function TaskCard({ task, driverLabel, onReset, onUpdate }) {
           onClick={handleFinish}
           disabled={!canFinishTask}
         >
-          Завершить задачу
+          {isUploading ? "Загрузка фото…" : "Завершить задачу"}
         </button>
         <button type="button" className="btn reset" onClick={handleReset}>
           Сбросить

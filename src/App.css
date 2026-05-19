@@ -841,6 +841,11 @@
   color: #86efac;
 }
 
+.photo-flag.uploading {
+  background: rgba(234, 179, 8, 0.18);
+  color: #fde047;
+}
+
 .dispatch-photo-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

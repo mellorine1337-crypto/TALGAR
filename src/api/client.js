@@ -34,7 +34,7 @@ export function clearStoredAuthToken() {
 
 async function request(path, options = {}, token = "") {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 12000);
+  const timeoutId = setTimeout(() => controller.abort(), 60000);
 
   const headers = {
     "Content-Type": "application/json",
